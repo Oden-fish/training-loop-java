@@ -30,6 +30,36 @@ class TextServiceTest {
     assertThat(service.slugify("")).isEmpty();
   }
 
+  @DisplayName("非 ASCII を含み slug が空になる入力は例外にする（URL に使えない空文字を返さないため）")
+  @ParameterizedTest(name = "[{index}] \"{0}\"")
+  @ValueSource(
+      strings = {
+        "\u65e5\u672c\u8a9e\u306e\u30bf\u30a4\u30c8\u30eb",
+        "\u65e5\u672c\u8a9e \u306e \u30bf\u30a4\u30c8\u30eb",
+        "\u65e5\u672c\u8a9e!!!",
+      })
+  void slugifyRejectsNonAsciiOnly(String input) {
+    assertThatThrownBy(() -> service.slugify(input))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(input);
+  }
+
+  @DisplayName("非 ASCII を含んでも ASCII 部分から slug を作れるならそのまま返す")
+  @ParameterizedTest(name = "[{index}] \"{0}\" -> \"{1}\"")
+  @CsvSource({
+    "'\u65e5\u672c\u8a9e Title', title",
+    "'caf\u00e9', caf",
+  })
+  void slugifyKeepsAsciiPartOfMixedInput(String input, String expected) {
+    assertThat(service.slugify(input)).isEqualTo(expected);
+  }
+
+  @Test
+  @DisplayName("ASCII の記号だけなら従来どおり空文字（例外にするのは非 ASCII を含むときだけ）")
+  void slugifyAsciiOnlySymbolsStaysEmpty() {
+    assertThat(service.slugify("!!!")).isEmpty();
+  }
+
   @DisplayName("上限以下はそのまま、超えたら末尾を … にして全体を上限ちょうどにする")
   @ParameterizedTest(name = "[{index}] \"{0}\" ({1}) -> \"{2}\"")
   @CsvSource({

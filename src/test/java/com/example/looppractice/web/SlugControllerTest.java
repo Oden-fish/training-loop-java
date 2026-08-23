@@ -39,4 +39,15 @@ class SlugControllerTest {
             post("/api/slugs").contentType(MediaType.APPLICATION_JSON).content("{\"text\":\"\"}"))
         .andExpect(status().isBadRequest());
   }
+
+  @Test
+  @DisplayName("slug を作れない非 ASCII だけの text は 400 を返す（500 にしない）")
+  void rejectsNonAsciiOnlyText() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/slugs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"\u65e5\u672c\u8a9e\u306e\u30bf\u30a4\u30c8\u30eb\"}"))
+        .andExpect(status().isBadRequest());
+  }
 }

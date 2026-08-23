@@ -12,11 +12,28 @@ public class TextService {
   /** 切り詰めたことを示す記号。U+2026 HORIZONTAL ELLIPSIS。 */
   private static final String ELLIPSIS = "\u2026";
 
-  /** 文字列を URL に使える slug に変換する。 */
+  /**
+   * 文字列を URL に使える slug に変換する。
+   *
+   * <p>英数字以外はハイフンにまとめ、前後のハイフンを落とす。非 ASCII 文字は slug に残らないため、変換結果が空になる入力のうち非 ASCII
+   * 文字を含むものは例外にする。空文字を返しても呼び出し側は URL を組み立てられず、失敗に気づけないまま空の URL を作ってしまうため。ASCII だけで構成された入力（{@code
+   * ""} や {@code "!!!"}）は従来どおり空文字を返す。
+   *
+   * @throws IllegalArgumentException 非 ASCII 文字を含み、かつ slug が空になるとき
+   */
   public String slugify(String value) {
     String lowered = value.toLowerCase().strip();
     String replaced = NON_ALNUM.matcher(lowered).replaceAll("-");
-    return replaced.replaceAll("^-+|-+$", "");
+    String slug = replaced.replaceAll("^-+|-+$", "");
+    if (slug.isEmpty() && hasNonAscii(value)) {
+      throw new IllegalArgumentException("cannot build a slug from non-ASCII input: " + value);
+    }
+    return slug;
+  }
+
+  /** ASCII 以外の文字を含むか。非 ASCII は slug に残らないため、slug が空になった原因の切り分けに使う。 */
+  private static boolean hasNonAscii(String value) {
+    return value.chars().anyMatch(codeUnit -> codeUnit > 0x7f);
   }
 
   /**
