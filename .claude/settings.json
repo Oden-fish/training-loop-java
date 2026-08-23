@@ -30,6 +30,8 @@
       "Bash(gh run list *)",
       "Bash(gh run view *)",
       "Bash(gh api repos/*)",
+      "Bash(gh pr merge *)",
+      "Bash(gh issue close *)",
       "Bash(npm run *)",
       "Bash(npm test *)",
       "Bash(npm ci)",
@@ -56,11 +58,11 @@
       "Bash(dart *)",
       "Bash(coverage *)",
       "Bash(./scripts/verify.sh --fast)",
-      "Bash(./scripts/verify.sh --fix)"
+      "Bash(./scripts/verify.sh --fix)",
+      "Edit(.claude/tmp/**)", 
+      "Edit(.claude/agent-memory/**)"
     ],
     "ask": [
-      "Bash(gh pr merge *)",
-      "Bash(gh issue close *)",
       "Bash(git merge *)"
     ],
     "deny": [
