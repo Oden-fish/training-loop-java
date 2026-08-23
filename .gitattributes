@@ -1,0 +1,4 @@
+# Spotless は改行コードを .gitattributes から解決する。これが無いと Windows では
+# native(CRLF) を期待して spotlessCheck が赤くなり、Linux CI とローカルで結果がずれる。
+* text=auto eol=lf
+*.bat text eol=crlf
