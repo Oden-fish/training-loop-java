@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: loop-practice
+
+server:
+  port: 8080

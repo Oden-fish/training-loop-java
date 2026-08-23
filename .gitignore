@@ -1,0 +1,17 @@
+node_modules/
+dist/
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Claude Code
+.claude/tmp/*
+!.claude/tmp/.gitkeep
+.claude/loop.log
+.claude/settings.local.json
+
+# --- java ---
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
