@@ -7,7 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-/** リクエストボディのバリデーションエラーを RFC 9457 の ProblemDetail に写像する。 */
+/** リクエストボディ / クエリのバリデーションエラーを RFC 9457 の ProblemDetail に写像する。 */
 @RestControllerAdvice
 public class ValidationExceptionHandler {
 

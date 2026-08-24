@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +27,19 @@ public class SlugController {
   public ResponseEntity<SlugResponse> create(@Valid @RequestBody SlugRequest request) {
     SlugResponse body = new SlugResponse(textService.slugify(request.text()));
     return ResponseEntity.status(HttpStatus.CREATED).body(body);
+  }
+
+  /**
+   * クエリで受け取った文字列を slug に変換して返す。
+   *
+   * <p>引数を {@code @RequestParam} にせず {@code @ModelAttribute}（アノテーション無し）で束縛しているのは、 エラー形式を POST
+   * と揃えるため。{@code @RequestParam} だと text 未指定は {@code MissingServletRequestParameterException}
+   * になり、ボディなしの 400 に落ちる。 {@code @ModelAttribute} なら未指定・空文字のどちらも {@code @NotBlank} 違反として {@code
+   * MethodArgumentNotValidException} に合流し、既存の ProblemDetail 変換にそのまま乗る。
+   */
+  @GetMapping
+  public SlugResponse get(@Valid SlugRequest query) {
+    return new SlugResponse(textService.slugify(query.text()));
   }
 
   /**
