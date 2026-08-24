@@ -32,7 +32,7 @@ public class SlugController {
    * slug を作れない text を 400 に写像する。
    *
    * <p>{@code TextService#slugify} は slug にできない入力を {@code IllegalArgumentException} で弾く。 素通しすると既定の
-   * 500 になり、サーバ側の障害と区別がつかなくなるため、ここで入力エラーとして返す。 レスポンスボディの形は #4 で ProblemDetail
+   * 500 になり、サーバ側の障害と区別がつかなくなるため、ここで入力エラーとして返す。 レスポンスボディの形は #16 で ProblemDetail
    * に揃える予定なので、ここではステータスだけを扱う。
    */
   @ExceptionHandler(IllegalArgumentException.class)
