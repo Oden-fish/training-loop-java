@@ -3,6 +3,9 @@ package com.example.looppractice.text;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -97,5 +100,78 @@ class TextServiceTest {
   @DisplayName("入力が空でも上限 0 は例外（引数の検証を先に行う）")
   void truncateRejectsZeroMaxEvenForEmptyInput() {
     assertThatThrownBy(() -> service.truncate("", 0)).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  @DisplayName("キー関数の戻り値ごとに要素をまとめる")
+  void groupByGroupsElementsByKey() {
+    Map<Character, List<String>> grouped =
+        service.groupBy(List.of("apple", "avocado", "banana"), value -> value.charAt(0));
+
+    assertThat(grouped)
+        .containsOnlyKeys('a', 'b')
+        .containsEntry('a', List.of("apple", "avocado"))
+        .containsEntry('b', List.of("banana"));
+  }
+
+  @Test
+  @DisplayName("空のコレクションは空のマップになる（null や例外にはしない）")
+  void groupByReturnsEmptyMapForEmptyInput() {
+    assertThat(service.groupBy(List.<String>of(), String::length)).isEmpty();
+  }
+
+  @Test
+  @DisplayName("同じキーの要素は元のコレクションの順序のままグループ内に並ぶ")
+  void groupByKeepsEncounterOrderWithinGroup() {
+    Map<Character, List<String>> grouped =
+        service.groupBy(List.of("b1", "a1", "b2", "a2", "b3"), value -> value.charAt(0));
+
+    assertThat(grouped.get('b')).containsExactly("b1", "b2", "b3");
+    assertThat(grouped.get('a')).containsExactly("a1", "a2");
+  }
+
+  @Test
+  @DisplayName("キーの並びは初出順で安定する（HashMap の不定順に戻さないための番人）")
+  void groupByKeepsFirstSeenKeyOrder() {
+    Map<Character, List<String>> grouped =
+        service.groupBy(List.of("b1", "a1", "b2", "a2", "b3"), value -> value.charAt(0));
+
+    assertThat(grouped.keySet()).containsExactly('b', 'a');
+  }
+
+  @Test
+  @DisplayName("キーの型は関数の戻り値から決まる（キャストなしで代入できる）")
+  void groupByInfersTypesForDifferentKeyTypes() {
+    Map<Integer, List<String>> byLength = service.groupBy(List.of("a", "bb", "cc"), String::length);
+    Map<Boolean, List<Integer>> byParity =
+        service.groupBy(List.of(1, 2, 3, 4), number -> number % 2 == 0);
+
+    assertThat(byLength).containsEntry(2, List.of("bb", "cc"));
+    assertThat(byParity).containsEntry(true, List.of(2, 4));
+  }
+
+  @Test
+  @DisplayName("コレクションが null なら、どの引数が null かが分かる NullPointerException にする")
+  void groupByRejectsNullValues() {
+    assertThatThrownBy(() -> service.<String, Integer>groupBy(null, String::length))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("values");
+  }
+
+  @Test
+  @DisplayName("キー関数が null なら、どの引数が null かが分かる NullPointerException にする")
+  void groupByRejectsNullKeyFunction() {
+    assertThatThrownBy(() -> service.<String, Integer>groupBy(List.of("a"), null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("keyFunction");
+  }
+
+  @Test
+  @DisplayName("キー関数が null を返したら NullPointerException（null キーは許容しない）")
+  void groupByRejectsNullKey() {
+    Function<String, Character> nullKeyFunction = value -> null;
+
+    assertThatThrownBy(() -> service.groupBy(List.of("a"), nullKeyFunction))
+        .isInstanceOf(NullPointerException.class);
   }
 }
