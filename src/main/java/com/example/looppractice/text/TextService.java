@@ -1,6 +1,13 @@
 package com.example.looppractice.text;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /** 練習用の文字列ユーティリティ。ここに機能を足していく。 */
@@ -53,5 +60,22 @@ public class TextService {
       return value;
     }
     return value.substring(0, maxLength - ELLIPSIS.length()) + ELLIPSIS;
+  }
+
+  /**
+   * コレクションの要素を、キー関数の戻り値ごとにまとめる。
+   *
+   * <p>グループ内の要素は元のコレクションの順序を保ち、キーも初出順に並ぶ。{@code Collectors#groupingBy} の 1 引数版は {@code HashMap}
+   * を返してキーの順序が不定になるため、順序を再現可能にする目的で {@code LinkedHashMap} を明示している。戻り値の可変性は保証しない。
+   *
+   * @param keyFunction 要素からキーを取り出す関数。{@code null} を返してはいけない
+   * @throws NullPointerException 引数が {@code null} のとき、またはキー関数が {@code null} を返したとき
+   */
+  public <T, K> Map<K, List<T>> groupBy(
+      Collection<T> values, Function<? super T, ? extends K> keyFunction) {
+    Objects.requireNonNull(values, "values must not be null");
+    Objects.requireNonNull(keyFunction, "keyFunction must not be null");
+    return values.stream()
+        .collect(Collectors.groupingBy(keyFunction, LinkedHashMap::new, Collectors.toList()));
   }
 }
