@@ -1,10 +1,12 @@
 package com.example.looppractice.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.looppractice.text.TextService;
+import java.util.Locale;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,12 +34,21 @@ class SlugControllerTest {
   }
 
   @Test
-  @DisplayName("text が空なら 400 を返す")
+  @DisplayName("text が空なら、どのフィールドがなぜ弾かれたかを ProblemDetail で返す")
   void rejectsBlankText() throws Exception {
     mockMvc
         .perform(
-            post("/api/slugs").contentType(MediaType.APPLICATION_JSON).content("{\"text\":\"\"}"))
-        .andExpect(status().isBadRequest());
+            post("/api/slugs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .locale(Locale.ENGLISH)
+                .content("{\"text\":\"\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.title").value("Bad Request"))
+        .andExpect(jsonPath("$.detail").isNotEmpty())
+        .andExpect(jsonPath("$.errors[0].field").value("text"))
+        .andExpect(jsonPath("$.errors[0].message").value("must not be blank"));
   }
 
   @Test
