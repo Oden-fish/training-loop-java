@@ -1,5 +1,6 @@
 package com.example.looppractice.web;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -60,5 +61,42 @@ class SlugControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"\u65e5\u672c\u8a9e\u306e\u30bf\u30a4\u30c8\u30eb\"}"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("GET はクエリの text を slug に変換して 200 を返す")
+  void returnsSlugForQueryText() throws Exception {
+    mockMvc
+        .perform(get("/api/slugs").param("text", "Hello World"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.slug").value("hello-world"));
+  }
+
+  @Test
+  @DisplayName("GET で text が未指定なら、POST と同じ形の ProblemDetail を返す")
+  void rejectsMissingTextQuery() throws Exception {
+    mockMvc
+        .perform(get("/api/slugs").locale(Locale.ENGLISH))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.title").value("Bad Request"))
+        .andExpect(jsonPath("$.detail").isNotEmpty())
+        .andExpect(jsonPath("$.errors[0].field").value("text"))
+        .andExpect(jsonPath("$.errors[0].message").value("must not be blank"));
+  }
+
+  @Test
+  @DisplayName("GET で text が空文字なら、POST と同じ形の ProblemDetail を返す")
+  void rejectsBlankTextQuery() throws Exception {
+    mockMvc
+        .perform(get("/api/slugs").param("text", "").locale(Locale.ENGLISH))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.title").value("Bad Request"))
+        .andExpect(jsonPath("$.detail").isNotEmpty())
+        .andExpect(jsonPath("$.errors[0].field").value("text"))
+        .andExpect(jsonPath("$.errors[0].message").value("must not be blank"));
   }
 }
