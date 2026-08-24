@@ -1,10 +1,12 @@
 package com.example.looppractice.web;
 
+import com.example.looppractice.history.SlugHistory;
 import com.example.looppractice.text.TextService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,15 +19,25 @@ public class SlugController {
 
   private final TextService textService;
 
-  public SlugController(TextService textService) {
+  private final SlugHistory history;
+
+  public SlugController(TextService textService, SlugHistory history) {
     this.textService = textService;
+    this.history = history;
   }
 
-  /** 受け取った文字列を slug に変換して返す。 */
+  /** 受け取った文字列を slug に変換して返し、履歴に残す。 */
   @PostMapping
   public ResponseEntity<SlugResponse> create(@Valid @RequestBody SlugRequest request) {
-    SlugResponse body = new SlugResponse(textService.slugify(request.text()));
-    return ResponseEntity.status(HttpStatus.CREATED).body(body);
+    String slug = textService.slugify(request.text());
+    history.record(slug);
+    return ResponseEntity.status(HttpStatus.CREATED).body(new SlugResponse(slug));
+  }
+
+  /** 直近に変換した slug を新しい順で返す。 */
+  @GetMapping("/recent")
+  public ResponseEntity<RecentSlugsResponse> recent() {
+    return ResponseEntity.ok(new RecentSlugsResponse(history.recent()));
   }
 
   /**
