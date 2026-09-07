@@ -22,6 +22,15 @@ class ArchitectureTest {
           .resideInAPackage("..web..");
 
   @ArchTest
+  static final ArchRule HISTORY_MUST_NOT_DEPEND_ON_WEB =
+      ArchRuleDefinition.noClasses()
+          .that()
+          .resideInAPackage("..history..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAPackage("..web..");
+
+  @ArchTest
   static final ArchRule CONTROLLERS_MUST_LIVE_IN_WEB_PACKAGE =
       ArchRuleDefinition.classes()
           .that()
