@@ -47,7 +47,10 @@ public class TextService {
    * 文字列を指定長で切り詰める。
    *
    * <p>長さが {@code maxLength} 以下ならそのまま返す。超える場合は末尾を {@code …}（U+2026）に置き換え、戻り値全体が {@code maxLength}
-   * ちょうどになるようにする。長さは UTF-16 コード単位で数えるため、末尾がサロゲートペアにかかる場合は分断される。
+   * ちょうどになるようにする。長さは UTF-16 コード単位で数える。
+   *
+   * <p>ただし切り詰め位置がサロゲートペアの途中に来るときは、ペアを分断せず 1 コード単位手前で切るため、戻り値が {@code maxLength - 1}
+   * になることがある。単独サロゲートを含む文字列は下流の JSON シリアライズやログ出力を壊すので、上限ちょうどに揃えることより不正な文字列を返さないことを優先している。
    *
    * @param maxLength 戻り値の上限。{@code …} を収められない 1 未満は不正
    * @throws IllegalArgumentException {@code maxLength} が 1 未満のとき
@@ -59,7 +62,24 @@ public class TextService {
     if (value.length() <= maxLength) {
       return value;
     }
-    return value.substring(0, maxLength - ELLIPSIS.length()) + ELLIPSIS;
+    int cutEnd = maxLength - ELLIPSIS.length();
+    if (splitsSurrogatePair(value, cutEnd)) {
+      cutEnd--;
+    }
+    return value.substring(0, cutEnd) + ELLIPSIS;
+  }
+
+  /**
+   * {@code cutEnd} で切るとサロゲートペアを分断するか。
+   *
+   * <p>直前がハイサロゲートかつ {@code cutEnd} 位置がローサロゲートなら、その 2 つは 1 文字を構成しているので切ってはいけない。{@code cutEnd} は
+   * {@code value.length() > maxLength} を通過した後に呼ばれるため常に有効な添字だが、{@code maxLength} が 1 のときは {@code
+   * cutEnd - 1} が負になるので先に弾く。
+   */
+  private static boolean splitsSurrogatePair(String value, int cutEnd) {
+    return cutEnd > 0
+        && Character.isHighSurrogate(value.charAt(cutEnd - 1))
+        && Character.isLowSurrogate(value.charAt(cutEnd));
   }
 
   /**
