@@ -14,6 +14,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class TextServiceTest {
 
+  /** サムズアップ絵文字 U+1F44D。UTF-16 では 2 コード単位のサロゲートペアになる。 */
+  private static final String THUMBS_UP = "\uD83D\uDC4D";
+
+  /** 切り詰め記号 U+2026。 */
+  private static final String ELLIPSIS = "\u2026";
+
   private final TextService service = new TextService();
 
   @DisplayName("記号と空白をハイフンにまとめ、前後のハイフンを落とす")
@@ -63,7 +69,7 @@ class TextServiceTest {
     assertThat(service.slugify("!!!")).isEmpty();
   }
 
-  @DisplayName("上限以下はそのまま、超えたら末尾を … にして全体を上限ちょうどにする")
+  @DisplayName("上限以下はそのまま、超えたら末尾を … にして全体を上限ちょうどにする（ペアにかからない場合）")
   @ParameterizedTest(name = "[{index}] \"{0}\" ({1}) -> \"{2}\"")
   @CsvSource({
     "'hello', 5, 'hello'",
@@ -76,7 +82,7 @@ class TextServiceTest {
   }
 
   @Test
-  @DisplayName("切り詰めた結果の長さは上限ちょうどで、… は上限の内側に収まる")
+  @DisplayName("切り詰めた結果の長さは上限ちょうどで、… は上限の内側に収まる（ペアにかからない場合）")
   void truncateKeepsExactLength() {
     assertThat(service.truncate("abcdefghij", 4)).hasSize(4).endsWith("\u2026");
   }
@@ -102,26 +108,33 @@ class TextServiceTest {
     assertThatThrownBy(() -> service.truncate("", 0)).isInstanceOf(IllegalArgumentException.class);
   }
 
-  /** サムズアップ絵文字 U+1F44D。UTF-16 では 2 コード単位のサロゲートペアになる。 */
-  private static final String THUMBS_UP = "👍";
-
-  @Test
   @DisplayName("切り詰め位置がサロゲートペアにかかるなら、ペアを分断せず 1 コード単位短く返す")
-  void truncateDoesNotSplitSurrogatePair() {
-    assertThat(service.truncate(THUMBS_UP + THUMBS_UP, 2)).isEqualTo("…");
+  @ParameterizedTest(name = "[{index}] maxLength={0} -> 絵文字 {1} 個 + …")
+  @CsvSource({
+    "2, 0", "4, 1",
+  })
+  void truncateDoesNotSplitSurrogatePair(int maxLength, int expectedPairs) {
+    assertThat(service.truncate(THUMBS_UP.repeat(3), maxLength))
+        .isEqualTo(THUMBS_UP.repeat(expectedPairs) + ELLIPSIS)
+        .hasSize(maxLength - 1);
   }
 
-  @Test
   @DisplayName("ペアを分断しないなら上限ちょうどに収める（無条件に 1 手前で切らない）")
-  void truncateKeepsExactLengthWhenPairFits() {
-    assertThat(service.truncate(THUMBS_UP + THUMBS_UP, 3)).isEqualTo(THUMBS_UP + "…");
+  @ParameterizedTest(name = "[{index}] maxLength={0} -> 絵文字 {1} 個 + …")
+  @CsvSource({
+    "3, 1", "5, 2",
+  })
+  void truncateKeepsExactLengthWhenPairFits(int maxLength, int expectedPairs) {
+    assertThat(service.truncate(THUMBS_UP.repeat(3), maxLength))
+        .isEqualTo(THUMBS_UP.repeat(expectedPairs) + ELLIPSIS)
+        .hasSize(maxLength);
   }
 
   @DisplayName("どの上限でも単独サロゲートを返さず、長さは上限を超えない")
   @ParameterizedTest(name = "[{index}] maxLength={0}")
-  @ValueSource(ints = {1, 2, 3, 4, 5})
+  @ValueSource(ints = {1, 2, 3, 4, 5, 6, 7})
   void truncateNeverReturnsLoneSurrogate(int maxLength) {
-    String truncated = service.truncate(THUMBS_UP + THUMBS_UP, maxLength);
+    String truncated = service.truncate(THUMBS_UP.repeat(3), maxLength);
 
     assertThat(truncated.length()).isLessThanOrEqualTo(maxLength);
     assertThat(hasLoneSurrogate(truncated)).isFalse();
@@ -130,21 +143,7 @@ class TextServiceTest {
   @Test
   @DisplayName("上限以下ならサロゲートペアを含んでいてもそのまま返す")
   void truncateKeepsSurrogatePairWhenWithinLimit() {
-    assertThat(service.truncate(THUMBS_UP + THUMBS_UP, 4)).isEqualTo(THUMBS_UP + THUMBS_UP);
-  }
-
-  /**
-   * 対になっていないサロゲートを含むか。分断されると単独ハイサロゲートが残るため、その検出に使う。
-   *
-   * <p>{@code codePoints()} は対になったサロゲートを 1 つの補助コードポイント（{@code > 0xFFFF}）にまとめるので、D800–DFFF
-   * の範囲に残るのは対を失ったサロゲートだけになる。
-   */
-  private static boolean hasLoneSurrogate(String value) {
-    return value
-        .codePoints()
-        .anyMatch(
-            codePoint ->
-                codePoint >= Character.MIN_SURROGATE && codePoint <= Character.MAX_SURROGATE);
+    assertThat(service.truncate(THUMBS_UP.repeat(3), 6)).isEqualTo(THUMBS_UP.repeat(3));
   }
 
   @Test
@@ -218,5 +217,19 @@ class TextServiceTest {
 
     assertThatThrownBy(() -> service.groupBy(List.of("a"), nullKeyFunction))
         .isInstanceOf(NullPointerException.class);
+  }
+
+  /**
+   * 対になっていないサロゲートを含むか。分断されると単独ハイサロゲートが残るため、その検出に使う。
+   *
+   * <p>{@code codePoints()} は対になったサロゲートを 1 つの補助コードポイント（{@code > 0xFFFF}）にまとめるので、D800–DFFF
+   * の範囲に残るのは対を失ったサロゲートだけになる。
+   */
+  private static boolean hasLoneSurrogate(String value) {
+    return value
+        .codePoints()
+        .anyMatch(
+            codePoint ->
+                codePoint >= Character.MIN_SURROGATE && codePoint <= Character.MAX_SURROGATE);
   }
 }
