@@ -102,6 +102,51 @@ class TextServiceTest {
     assertThatThrownBy(() -> service.truncate("", 0)).isInstanceOf(IllegalArgumentException.class);
   }
 
+  /** サムズアップ絵文字 U+1F44D。UTF-16 では 2 コード単位のサロゲートペアになる。 */
+  private static final String THUMBS_UP = "👍";
+
+  @Test
+  @DisplayName("切り詰め位置がサロゲートペアにかかるなら、ペアを分断せず 1 コード単位短く返す")
+  void truncateDoesNotSplitSurrogatePair() {
+    assertThat(service.truncate(THUMBS_UP + THUMBS_UP, 2)).isEqualTo("…");
+  }
+
+  @Test
+  @DisplayName("ペアを分断しないなら上限ちょうどに収める（無条件に 1 手前で切らない）")
+  void truncateKeepsExactLengthWhenPairFits() {
+    assertThat(service.truncate(THUMBS_UP + THUMBS_UP, 3)).isEqualTo(THUMBS_UP + "…");
+  }
+
+  @DisplayName("どの上限でも単独サロゲートを返さず、長さは上限を超えない")
+  @ParameterizedTest(name = "[{index}] maxLength={0}")
+  @ValueSource(ints = {1, 2, 3, 4, 5})
+  void truncateNeverReturnsLoneSurrogate(int maxLength) {
+    String truncated = service.truncate(THUMBS_UP + THUMBS_UP, maxLength);
+
+    assertThat(truncated.length()).isLessThanOrEqualTo(maxLength);
+    assertThat(hasLoneSurrogate(truncated)).isFalse();
+  }
+
+  @Test
+  @DisplayName("上限以下ならサロゲートペアを含んでいてもそのまま返す")
+  void truncateKeepsSurrogatePairWhenWithinLimit() {
+    assertThat(service.truncate(THUMBS_UP + THUMBS_UP, 4)).isEqualTo(THUMBS_UP + THUMBS_UP);
+  }
+
+  /**
+   * 対になっていないサロゲートを含むか。分断されると単独ハイサロゲートが残るため、その検出に使う。
+   *
+   * <p>{@code codePoints()} は対になったサロゲートを 1 つの補助コードポイント（{@code > 0xFFFF}）にまとめるので、D800–DFFF
+   * の範囲に残るのは対を失ったサロゲートだけになる。
+   */
+  private static boolean hasLoneSurrogate(String value) {
+    return value
+        .codePoints()
+        .anyMatch(
+            codePoint ->
+                codePoint >= Character.MIN_SURROGATE && codePoint <= Character.MAX_SURROGATE);
+  }
+
   @Test
   @DisplayName("キー関数の戻り値ごとに要素をまとめる")
   void groupByGroupsElementsByKey() {
