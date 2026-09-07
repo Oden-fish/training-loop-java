@@ -41,6 +41,19 @@ public class SlugController {
   }
 
   /**
+   * クエリで受け取った文字列を slug に変換して返す。
+   *
+   * <p>引数を {@code @RequestParam} にせず {@code @ModelAttribute}（アノテーション無し）で束縛しているのは、 エラー形式を POST
+   * と揃えるため。{@code @RequestParam} だと text 未指定は {@code MissingServletRequestParameterException}
+   * になり、ボディなしの 400 に落ちる。 {@code @ModelAttribute} なら未指定・空文字のどちらも {@code @NotBlank} 違反として {@code
+   * MethodArgumentNotValidException} に合流し、既存の ProblemDetail 変換にそのまま乗る。
+   */
+  @GetMapping
+  public SlugResponse get(@Valid SlugRequest query) {
+    return new SlugResponse(textService.slugify(query.text()));
+  }
+
+  /**
    * slug を作れない text を 400 に写像する。
    *
    * <p>{@code TextService#slugify} は slug にできない入力を {@code IllegalArgumentException} で弾く。 素通しすると既定の
